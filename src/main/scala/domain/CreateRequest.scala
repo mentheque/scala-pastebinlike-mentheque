@@ -2,8 +2,6 @@ package domain
 
 import derevo.circe.{decoder, encoder}
 import derevo.derive
-import doobie.Read
-import sttp.tapir.Schema
 import sttp.tapir.derevo.schema
 import tofu.logging.derivation._
 
@@ -20,6 +18,7 @@ object CreateRequest {
   implicit val pastein2CreateRequest: Pastein => CreateRequest =
     p => CreateRequest(p.body, p.accessKey)
 }
+
 object ModifyRequest {
   implicit val pastein2ModifyRequest: Pastein => ModifyRequest =
     p => ModifyRequest(p.shorthand, p.accessKey)

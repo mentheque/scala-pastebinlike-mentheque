@@ -1,11 +1,11 @@
 package config
 
-import pureconfig.generic.semiauto._
-import pureconfig.ConfigReader
 import cats.effect.IO
-import pureconfig.ConfigSource
+import pureconfig.{ConfigReader, ConfigSource}
+import pureconfig.generic.semiauto._
 
 final case class AppConfig(db: DbConfig, server: ServerConfig)
+
 object AppConfig {
   implicit val reader: ConfigReader[AppConfig] = deriveReader
 
@@ -14,16 +14,18 @@ object AppConfig {
 }
 
 final case class DbConfig(
-    url: String,
-    driver: String,
-    user: String,
-    password: String
-)
+                           url: String,
+                           driver: String,
+                           user: String,
+                           password: String
+                         )
+
 object DbConfig {
   implicit val reader: ConfigReader[DbConfig] = deriveReader
 }
 
 final case class ServerConfig(host: String, port: Int)
+
 object ServerConfig {
   implicit val reader: ConfigReader[ServerConfig] = deriveReader
 }

@@ -1,20 +1,14 @@
-import cats.Id
-import cats.data.ReaderT
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.implicits.toSemigroupKOps
+import com.comcast.ip4s._
 import config.AppConfig
 import controller.PasteinController
 import dao.PasteinSql
-import doobie.util.transactor.Transactor
-import com.comcast.ip4s._
-import eu.timepit.refined.string.IPv4
-import com.comcast.ip4s._
-import domain.RequestContext
 import domain.RequestContext.ContextualIO
+import doobie.util.transactor.Transactor
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
 import service.PasteinStorage
-import service.PasteinStorage.LoggingImpl
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import tofu.logging.Logging

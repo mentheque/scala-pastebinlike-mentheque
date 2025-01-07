@@ -1,24 +1,23 @@
 package service
 
+import cats.FlatMap
 import cats.effect.kernel.MonadCancelThrow
 import cats.implicits.{catsSyntaxApply, toFunctorOps}
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
 import cats.syntax.either._
 import cats.syntax.flatMap._
-import cats.{FlatMap, Id}
 import dao.PasteinSql
 import domain._
 import domain.errors._
 import doobie._
 import doobie.implicits._
-import tofu.WithContext
 import tofu.logging.Logging
-import tofu.logging.Logging.Make
 import tofu.syntax.logging._
 
 trait PasteinStorage[F[_]] {
   def findByShorthand(shorthand: LinkShorthand): F[Either[InternalError, Option[PasteinBody]]]
+
   def create(pastein: CreateRequest): F[Either[AppError, ModifyRequest]]
 
   def verifyAccessKey(pastein: ModifyRequest): F[Either[AppError, Boolean]]
@@ -27,28 +26,28 @@ trait PasteinStorage[F[_]] {
 }
 
 object PasteinStorage {
-  def make[F[_]: MonadCancelThrow](
-                                    pasteinSql: PasteinSql,
-                                    transactor: Transactor[F]
-  ): PasteinStorage[F] =
+  def make[F[_] : MonadCancelThrow](
+                                     pasteinSql: PasteinSql,
+                                     transactor: Transactor[F]
+                                   ): PasteinStorage[F] =
     new PasteinStorage[F] {
       override def findByShorthand(shorthand: LinkShorthand): F[Either[InternalError, Option[PasteinBody]]] =
         pasteinSql
-        .findByShorthand(shorthand)
-        .transact(transactor)
-        .attempt
-        .map(_.leftMap(InternalError.apply))
+          .findByShorthand(shorthand)
+          .transact(transactor)
+          .attempt
+          .map(_.leftMap(InternalError.apply))
 
       override def create(pastein: CreateRequest): F[Either[AppError, ModifyRequest]] =
         pasteinSql.create(pastein).transact(transactor).attempt.map {
-          case Left(th)           => InternalError(th).asLeft
+          case Left(th) => InternalError(th).asLeft
           case Right(ModifyRequest(shorthand, AccessKey(None))) => UnableToGenerateAccessToken().asLeft
           case Right(someCreatedPastein) => someCreatedPastein.asRight // have to map from
           // Either[Throwable, ...] => Either[InternalError, ...]
         }
 
       private def flattenErrorsAndMap[A, B](f: A => B)
-                                                   (x: Either[Throwable, Either[AppError, A]]): Either[AppError, B] =
+                                           (x: Either[Throwable, Either[AppError, A]]): Either[AppError, B] =
         x match {
           case Left(th) => InternalError(th).asLeft
           case Right(Left(err)) => err.asLeft
@@ -63,7 +62,7 @@ object PasteinStorage {
           .map(flattenErrorsAndMap(pastein.accessKey.equals(_)))
 
       override def modifyPastein(pastein: Pastein): F[Either[AppError, Unit]] =
-        verifyAccessKey(pastein).flatMap{
+        verifyAccessKey(pastein).flatMap {
           case Left(err) => err.asLeft[Unit].pure[F]
           case Right(false) => IncorrectAccessKey(pastein.shorthand).asLeft[Unit]
             .leftMap[AppError](identity).pure[F] // have to do all of this hoop jumping to not get an error from
@@ -74,21 +73,21 @@ object PasteinStorage {
         }
     }
 
-  private final class LoggingImpl[F[_]: FlatMap](storage: PasteinStorage[F])(
-      implicit logging: Logging[F]
+  private final class LoggingImpl[F[_] : FlatMap](storage: PasteinStorage[F])(
+    implicit logging: Logging[F]
   ) extends PasteinStorage[F] {
     private def surroundWithLogs[Error, Res](
-        io: F[Either[Error, Res]]
-    )(
-        inputLog: String
-    )(errorOutputLog: Error => (String, Option[Throwable]))(
-        successOutputLog: Res => String
-    ): F[Either[Error, Res]] = {
+                                              io: F[Either[Error, Res]]
+                                            )(
+                                              inputLog: String
+                                            )(errorOutputLog: Error => (String, Option[Throwable]))(
+                                              successOutputLog: Res => String
+                                            ): F[Either[Error, Res]] = {
       info"$inputLog" *> io.flatTap {
         case Left(error) =>
           val (logString: String, throwable: Option[Throwable]) =
             errorOutputLog(error)
-          throwable.fold(error"$logString")(err => errorCause"$logString" (err))
+          throwable.fold(error"$logString")(err => errorCause"$logString"(err))
         case Right(success) => info"${successOutputLog(success)}"
       }
     }
@@ -115,9 +114,9 @@ object PasteinStorage {
       )(success => s"Modified successfully")
   }
 
-  def makeLogging[F[_]: MonadCancelThrow](
-                                    pasteinSql: PasteinSql,
-                                    transactor: Transactor[F]
-                                  )(implicit logging: Logging[F]): PasteinStorage[F] =
+  def makeLogging[F[_] : MonadCancelThrow](
+                                            pasteinSql: PasteinSql,
+                                            transactor: Transactor[F]
+                                          )(implicit logging: Logging[F]): PasteinStorage[F] =
     new LoggingImpl[F](make(pasteinSql, transactor))
 }

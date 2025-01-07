@@ -1,19 +1,16 @@
 package controller
 
-import cats.Functor
 import cats.data.ReaderT
 import cats.effect.IO
 import domain.errors.AppError
+import domain.{Pastein, RequestContext}
 import service.PasteinStorage
 import sttp.tapir.server.ServerEndpoint
-import cats.implicits.toFunctorOps
-import domain.{Pastein, RequestContext}
-import sttp.tapir.AnyEndpoint
-import sttp.tapir.swagger.bundle.SwaggerInterpreter
 //import tofu.syntax.feither._
 
 trait PasteinController[F[_]] {
   def findPasteinByShorthand: ServerEndpoint[Any, F]
+
   def createPastein: ServerEndpoint[Any, F]
 
   def verifyAccess: ServerEndpoint[Any, F]

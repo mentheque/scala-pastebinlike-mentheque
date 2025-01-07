@@ -1,7 +1,5 @@
 package dao
 
-import cats.{Applicative, Monad}
-import cats.syntax.applicative._
 import cats.syntax.either._
 import domain._
 import domain.errors._
@@ -10,6 +8,7 @@ import doobie.implicits._
 
 trait PasteinSql {
   def findByShorthand(shorthand: LinkShorthand): ConnectionIO[Option[PasteinBody]]
+
   def create(pastein: CreateRequest): ConnectionIO[ModifyRequest]
 
   def accessKeyByShorthand(shorthand: LinkShorthand): ConnectionIO[Either[PasteinNotFound, AccessKey]]
@@ -39,9 +38,9 @@ object PasteinSql {
            select access_token
            from PASTEINS
            where shorthand=${shorthand.value}
-      """.query[String] // possibly can generate AccessKey from the beginning
+      """.query[String]
 
-    def insertKnowingKeySql(pastein: CreateRequest): Update0 = // this is shit, but let's just work with this
+    def insertKnowingKeySql(pastein: CreateRequest): Update0 =
       sql"""
             insert into PASTEINS (body, access_token)
             values (${pastein.body.value}, ${pastein.accessKey.value.getOrElse("you shouldn't have come here")})
@@ -89,7 +88,7 @@ object PasteinSql {
       }
 
     override def modifyPastein(pastein: Pastein): ConnectionIO[Either[AppError, Unit]] =
-      modifyPasteinSql(pastein).run.map{
+      modifyPasteinSql(pastein).run.map {
         case 0 => PasteinNotFound(pastein.shorthand).asLeft
         case _ => ().asRight
       }
